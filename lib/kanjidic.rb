@@ -32,7 +32,34 @@ module Kanjidic
 			O: :oneil,
 	}
 
-	# Very slow and quite nasty but works
+	@@descriptions = { 
+			halpern: '"New Japanese-English Character Dictionary" (1990), edited by Jack Halpern',
+			nelson: '"Modern Reader\'s Japanese-English Character Dictionary", edited by Andrew Nelson',
+			new_nelson: '"The New Nelson Japanese-English Character Dictionary", edited by John Haig',
+			spahn_hadaminsky: '"Kanji & Kana book" (2011), by Spahn & Hadamitzky',
+			AJLT: '"Japanese For Busy People" vols I-III, published by the AJLT',
+			crowley: '"The Kanji Way to Japanese Language Power" by Dale Crowley',
+			hodges_okazaki: '"Japanese Kanji Flashcards", by Max Hodges and Tomoko Okazaki (White Rabbit Press)',
+			kodansha: '"Kodansha Compact Kanji Guide"',
+			hensall: '"A Guide To Reading and Writing Japanese" 3rd edition, edited by Ken Hensall et al',
+			nishiguchi_kono: '"Kanji in Context" by Nishiguchi and Kono',
+			halpern_2: '"Kanji Learners Dictionary" 1999, edited by Jack Halpern (Kodansha)',
+			halpern_3: '"Kanji Learners Dictionary" 2013, edited by Jack Halpern (Kodansha)',
+			maniette: '"Les Kanji dans la tête", by Yves Maniette',
+			heisig_6th: '"Remembering The Kanji, 6th Edition" by James Heisig',
+			oneil_2: '"Essential Kanji", by P.G. O\'Neill',
+			halpern_4: '"Kodansha Kanji Dictionary" (2013), by Jack Halpern',
+			deroo: '"2001 Kanji" (Bonjinsha), by Father Joseph De Roo',
+			sakade: '"A Guide To Reading and Writing Japanese" edited by Florence Sakade',
+			kask: '"Tuttle Kanji Cards", compiled by Alexander Kask. ',
+			henshall: '"A Guide To Remembering Japanese Characters" by Kenneth G. Henshall',
+			gakken: '"A New Dictionary of Kanji Usage", by Nao\'omi Kuratani, Akemi Kobayashi',
+			heisig: '"Remembering The Kanji" by James Heisig',
+			oneil: '"Japanese Names" (1972), by P.G. O\'Neill. (Weatherhill)',
+			morohasidaikanwajiten: '"Morohashi Daikanwajiten"'
+	}
+
+	# Very slow and quite nasty but works. Rework into one unified regex for efficiency
 	@@patterns ||= { 
 			/T([12])/ => lambda { |v| 
 				case v.to_i
@@ -84,7 +111,7 @@ module Kanjidic
 			/(\W+)/ => lambda { |v| { Kanjidic::kana => v } }
 	}.
 	merge(
-		dictionaries.map { |k,v| 
+		@@dictionaries.map { |k,v| 
 			[/#{k}(\d+A?)/, { dictionary: v }]
 		}.to_h
 	)
@@ -179,6 +206,10 @@ module Kanjidic
 		else 
 			raise ArgumentError, "Invalid parameter #{e}"
 		end
+	end
+
+	def self.descriptions
+		@@descriptions
 	end
 
 	private_class_method def self.insert hash, key, value 
