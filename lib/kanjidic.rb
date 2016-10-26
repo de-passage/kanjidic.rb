@@ -32,7 +32,7 @@ module Kanjidic
 			O: :oneil,
 	}
 
-	# Very slow and nasty but works
+	# Very slow and quite nasty but works
 	@@patterns ||= { 
 			/T([12])/ => lambda { |v| 
 				case v.to_i
@@ -48,7 +48,7 @@ module Kanjidic
 			/G(\d+)/ => :grade,
 			/J(\d)/ => :JLPT,
 			/Y(\S+)/ => :pinyin,
-			/W(\w+)/ => :'korean reading', 
+			/W(\w+)/ => :hangul,
 			/P(\d+-\d+-\d+)/ => :SKIP,
 			/S(\d+)/ => :strokes,
 			/U(\h+)/ => -> (v) { { unicode: v.hex } },
@@ -65,7 +65,7 @@ module Kanjidic
 				if t == "J" 
 					{ crossreference: { 'JIS code': v[1..-1] } }
 				else 
-					{ crossreference: { @@dictionaries[t.to_sym] => v } }
+					{ crossreference: { dictionaries[t.to_sym] => v } }
 				end 
 			},
 			/Z([BPRS])P(\S+)/ => lambda { |c, v|  
@@ -79,15 +79,19 @@ module Kanjidic
 				{ misrepresentation: { key  => v } } 
 			},
 			/{([^}]+)}/ => lambda { |v| 
-				v == "(kokuji)" ? { kokuji: true } : { :meanings => v} 
+				v == "(kokuji)" ? { kokuji: true } : { :meanings => v } 
 			},
 			/(\W+)/ => lambda { |v| { Kanjidic::kana => v } }
 	}.
 	merge(
-		@@dictionaries.map { |k,v| 
-			[/#{k}(\d+)A?/, { dictionary: v }]
+		dictionaries.map { |k,v| 
+			[/#{k}(\d+A?)/, { dictionary: v }]
 		}.to_h
 	)
+
+	def self.dictionaries
+		@@dictionaries
+	end
 
 	def self.parse filename = "kanjidic"
 		File.open(filename) do |f|
