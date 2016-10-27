@@ -322,7 +322,7 @@ module Kanjidic
 
 	# Insert values in a hash depending on the previous content of the hash
 	# Essentially a deep_merge implementation.. 
-	def self._insert hash, dic
+	private_class_method def self._insert hash, dic
 		dic.each do |key, value|
 			t = hash[key]
 			# If the key doesn't exist, insert
@@ -341,7 +341,6 @@ module Kanjidic
 			end
 		end
 	end
-	private_class_method :_insert
 
 	private_class_method def self._to_s key, value, nesting = 1, resolve = false
 		resolve = (resolve || key.to_s[/misclassification|crossreference/])
