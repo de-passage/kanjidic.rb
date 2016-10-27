@@ -2,203 +2,315 @@ require "forwardable.rb"
 
 module Kanjidic
 
-	@@extractor ||= nil
-	@@kana ||= :meaning # Oh look at that ugly global ! 
 	@@dic ||= nil
+	@@parser ||= nil
 
-	@@dictionaries = {
-			H: :halpern,
-			N: :nelson,
-			V: :new_nelson,
-			DA: :spahn_hadaminsky,
-			DB: :AJLT,
-			DC: :crowley,
-			DF: :hodges_okazaki,
-			DG: :kodansha,
-			DH: :hensall,
-			DJ: :nishiguchi_kono,
-			DK: :halpern_2,
-			DL: :halpern_3,
-			DM: :maniette,
-			DN: :heisig_6th,
-			DO: :oneil_2,
-			DP: :halpern_4,
-			DR: :deroo,
-			DS: :sakade,
-			DT: :kask,
-			E: :henshall,
-			K: :gakken,
-			L: :heisig,
-			O: :oneil,
+	# sym => [code, name, additional information]
+	@@dictionaries ||= {
+			:halpern => ['H', 'New Japanese-English Character Dictionary', '(1990), edited by Jack Halpern'],
+			:nelson => ['N', 'Modern Reader\'s Japanese-English Character Dictionary', 'edited by Andrew Nelson'],
+			:new_nelson => ['V', 'The New Nelson Japanese-English Character Dictionary', 'edited by John Haig'],
+			:spahn_hadaminsky => ['DA', 'Kanji & Kana', '(2011), by Spahn & Hadamitzky'],
+			:spahn_hadaminsky_2 => ['I', 'The Kanji Dictionary', "(1996), by Spahn and Hadaminsky"],
+			:AJLT => ['DB', 'Japanese For Busy People', 'vols I-III, published by the AJLT'],
+			:crowley => ['DC', 'The Kanji Way to Japanese Language Power', 'by Dale Crowley'],
+			:hodges_okazaki => ['DF', 'Japanese Kanji Flashcards', 'by Max Hodges and Tomoko Okazaki (White Rabbit Press)'],
+			:kodansha => ['DG', 'Kodansha Compact Kanji Guide'],
+			:hensall => ['DH', 'A Guide To Reading and Writing Japanese', '3rd edition, edited by Ken Hensall et al'],
+			:nishiguchi_kono => ['DJ', 'Kanji in Context', 'by Nishiguchi and Kono'],
+			:halpern_2 => ['DK', 'Kanji Learners Dictionary (1999)', 'edited by Jack Halpern (Kodansha)'],
+			:halpern_3 => ['DL', 'Kanji Learners Dictionary (2013)', 'edited by Jack Halpern (Kodansha)'],
+			:maniette => ['DM', 'Les Kanji dans la tête', 'by Yves Maniette'],
+			:heisig_6th => ['DN', 'Remembering The Kanji, 6th Edition', 'by James Heisig'],
+			:oneil_2 => ['DO', 'Essential Kanji', 'by P.G. O\'Neill'],
+			:halpern_4 => ['DP', 'Kodansha Kanji Dictionary', '(2013), by Jack Halpern'],
+			:deroo => ['DR', '2001 Kanji', '(Bonjinsha), by Father Joseph De Roo'],
+			:sakade => ['DS', 'A Guide To Reading and Writing Japanese', 'edited by Florence Sakade'],
+			:kask => ['DT', 'Tuttle Kanji Cards', 'compiled by Alexander Kask. '],
+			:henshall => ['E', 'A Guide To Remembering Japanese Characters', 'by Kenneth G. Henshall'],
+			:gakken => ['K', 'A New Dictionary of Kanji Usage', 'by Nao\'omi Kuratani, Akemi Kobayashi'],
+			:heisig => ['L', 'Remembering The Kanji', 'by James Heisig'],
+			:oneil => ['O', 'Japanese Names', '(1972), by P.G. O\'Neill. (Weatherhill)'],
+			:morohasidaikanwajiten => ['M', '大漢和辞典', "13 volumes, by Morohashi Tetsuji" ]
 	}
 
-	@@descriptions = { 
-			halpern: '"New Japanese-English Character Dictionary" (1990), edited by Jack Halpern',
-			nelson: '"Modern Reader\'s Japanese-English Character Dictionary", edited by Andrew Nelson',
-			new_nelson: '"The New Nelson Japanese-English Character Dictionary", edited by John Haig',
-			spahn_hadaminsky: '"Kanji & Kana book" (2011), by Spahn & Hadamitzky',
-			AJLT: '"Japanese For Busy People" vols I-III, published by the AJLT',
-			crowley: '"The Kanji Way to Japanese Language Power" by Dale Crowley',
-			hodges_okazaki: '"Japanese Kanji Flashcards", by Max Hodges and Tomoko Okazaki (White Rabbit Press)',
-			kodansha: '"Kodansha Compact Kanji Guide"',
-			hensall: '"A Guide To Reading and Writing Japanese" 3rd edition, edited by Ken Hensall et al',
-			nishiguchi_kono: '"Kanji in Context" by Nishiguchi and Kono',
-			halpern_2: '"Kanji Learners Dictionary" 1999, edited by Jack Halpern (Kodansha)',
-			halpern_3: '"Kanji Learners Dictionary" 2013, edited by Jack Halpern (Kodansha)',
-			maniette: '"Les Kanji dans la tête", by Yves Maniette',
-			heisig_6th: '"Remembering The Kanji, 6th Edition" by James Heisig',
-			oneil_2: '"Essential Kanji", by P.G. O\'Neill',
-			halpern_4: '"Kodansha Kanji Dictionary" (2013), by Jack Halpern',
-			deroo: '"2001 Kanji" (Bonjinsha), by Father Joseph De Roo',
-			sakade: '"A Guide To Reading and Writing Japanese" edited by Florence Sakade',
-			kask: '"Tuttle Kanji Cards", compiled by Alexander Kask. ',
-			henshall: '"A Guide To Remembering Japanese Characters" by Kenneth G. Henshall',
-			gakken: '"A New Dictionary of Kanji Usage", by Nao\'omi Kuratani, Akemi Kobayashi',
-			heisig: '"Remembering The Kanji" by James Heisig',
-			oneil: '"Japanese Names" (1972), by P.G. O\'Neill. (Weatherhill)',
-			morohasidaikanwajiten: '"Morohashi Daikanwajiten"'
+	@@additional_codes ||= {
+			classification_radical: ['B', "Nelson classification radical (部首)"],
+			classical_radical: ['C', "Classical radical (部首)"],
+			frequency: ['F', "Frequency in newspapers"],
+			grade: ['G', "Grade taught"],
+			jlpt: ['J', "JLPT level"],
+			pinyin: ['Y', "Pinyin"],
+			hangul: ['W', "Hangul"],
+			skip_code: ['P', "SKIP"],
+			strokes: ['S', "Stroke count"],
+			unicode: ['U', "Unicode value"],
+			four_corner_index: ['Q', '"Four Corner" index'],
+			crossreference: ['X', "Cross-reference code"],
+			misclassification: ['Z', "Mis-classification code"]
 	}
 
-	# Very slow and quite nasty but works. Rework into one unified regex for efficiency
-	@@patterns ||= { 
-			/T([12])/ => lambda { |v| 
-				case v.to_i
-				when 1
-					Kanjidic::kana = :'name reading'
-				when 2
-					Kanjidic::kana = :'radical name'
-				end
-			},
-			/B(\d+)/ => :bushu, 
-			/C(\d+)/ => :classical_radical,
-			/F(\d+)/ => :frequency,
-			/G(\d+)/ => :grade,
-			/J(\d)/ => :JLPT,
-			/Y(\S+)/ => :pinyin,
-			/W(\w+)/ => :hangul,
-			/P(\d+-\d+-\d+)/ => :SKIP,
-			/S(\d+)/ => :strokes,
-			/U(\h+)/ => -> (v) { { unicode: v.hex } },
-			/Q([0-9.]*)/ => :four_corner,
-			/M([NP])([0-9.XP]+)/ => lambda { |t, v| 
-				key = case t 
-					  when 'N' then :number
-					  when 'P' then :page
-					  else return nil
-					  end
-				{ dictionary: { morohasidaikanwajiten: { key => v } } }
-			},
-			/X([A-Z]{1,2})(\S+)/ => lambda { |t, v| 
-				if t == "J" 
-					{ crossreference: { 'JIS code': v[1..-1] } }
+	@@uncoded ||= {
+		reading: "Reading",
+		name_reading: "Name reading (名乗り)",
+		radical_name: "Radical name",
+		character: "Character",
+		jis_code: "JIS code",
+		meanings: "Meaning",
+		kokuji: "Original Japanese character (国字)",
+		dictionaries: "Dictionaries",
+		number: 'Number',
+		page: 'Page',
+		position: "Position",
+		both: "Stroke count and position",
+		disagreement: "Disagreement over the number of strokes",
+		undefined: "undefined"
+	}
+
+	@@codes ||= nil
+	@@all_symbols ||= nil
+
+	@@special_codes ||= { 
+		'T' => ->(_, value, sup) { 
+			case value.to_i 
+			when 1
+				sup.call(:name_reading)
+			when 2
+				sup.call(:radical_name)
+			end
+			{}
+		},
+		'M' => ->(subcode, value, _) {
+			{
+				dictionaries: { 
+					morohasidaikanwajiten: {
+						case subcode 
+						when 'N'
+							:number
+						when 'P'
+							:page
+						end => value 
+					}
+				}
+			}
+		},
+		'X' => ->(subcode, value, _) {
+			{ crossreference: 
+				if subcode == "J" 
+					{ jis_code: value }
+				elsif t = codes[subcode]
+					t.call("", value, proc {})
 				else 
-					{ crossreference: { dictionaries[t.to_sym] => v } }
+					{ undefined: value }
 				end 
-			},
-			/Z([BPRS])P(\S+)/ => lambda { |c, v|  
-				key = case c
-					  when 'S' then :stroke
-					  when 'P' then :position
-					  when 'B' then :both
-					  when 'R' then :disagreement
-					  else return nil
-					  end
-				{ misrepresentation: { key  => v } } 
-			},
-			/{([^}]+)}/ => lambda { |v| 
-				v == "(kokuji)" ? { kokuji: true } : { :meanings => v } 
-			},
-			/(\W+)/ => lambda { |v| { Kanjidic::kana => v } }
-	}.
-	merge(
-		@@dictionaries.map { |k,v| 
-			[/#{k}(\d+A?)/, { dictionary: v }]
-		}.to_h
-	)
+			}
+		},
+		'Z' => ->(subcode, value, _) {  
+			key = case subcode[0]
+				  when 'S' then :strokes
+				  when 'P' then :position
+				  when 'B' then :both
+				  when 'R' then :disagreement
+				  else :undefined
+				  end
+			{ misclassification: { key => value } } 
+		},
+		'IN' => ->(_, value, _) {
+			{ dictionaries: { spahn_hadaminsky: value } }
+		}
+	}
 
-	def self.dictionaries
-		@@dictionaries
+	# Load the Kanji dictionary
+	#
+	# Load a file at the location given in argument in the KANJIDIC format and parse it into a data structure in memory.
+	# Raise an exception if a file has already been loaded. See also Kanjidic::close, Kanjidic::expand
+	def self.open filename, jis
+		raise "Kanjidic already open (use Kanjidic::close first if you want to reload it, or Kanjidic::expand if you want to extend it)" if @@dic
+		@@dic = build(filename, jis)
 	end
 
-	def self.parse filename = "kanjidic"
-		File.open(filename) do |f|
-			f.map{ |l| extractor.call(l) }
-		end
+	# Expand the Kanji dictionary
+	#
+	# Load a file, parse it and add its informations to an existing in-memory dictionary
+	def self.expand filename, jis
+		@@dic.concat build(filename, jis)
 	end
 
-	def self.extractor= ext
-		@@extractor = ext
-	end
-
-	def self.extractor 
-		@@extractor || lambda do |l| extract_kanji_info l end
-	end
-
-	def self.kana
-		@@kana
-	end
-
-	def self.kana= k
-		@@kana = k
-	end
-
-	def self.codes
-		@@patterns
-	end
-
-	def self.open filename
-		raise "Kanjidic already open (use Kanjidic::close if you want to reload it)" if @@dic
-		@@dic = parse(filename)
-		@@dic.freeze
-	end
-
-	def self.close 
+	# Close the Kanji dictionary
+	#
+	# The Kanjidic is a big file, resulting in a big structure in memory.
+	# Use this function if you need to close it
+	def self.close
 		@@dic = nil
+		GC.start
 	end
 
+	# Checks whether the Kanjidic is loaded
+	#
+	# Returns true if a Kanjidic is available to use through the Kanjidic module interface, false otherwise.
 	def self.open?
 		!!@@dic
 	end
 
-	def self.method_missing sym, *args, &blck
-		raise NoMethodError, "No method named #{sym} for Kanjidic" unless @@dic
-		@@dic.send sym, *args, &blck
+	# Parse a Kanjidic file
+	#
+	# Parse the file at the location given in argument and return a data structure representing it
+	def self.build filename, jis
+		File.open(filename) do |f|
+			result = []
+			f.each do |l| 
+				if r = parse(l, jis)
+					result << r
+				end
+			end
+			result
+		end
 	end
 
-	def self.extract_kanji_info line
-		k = { dictionary: {} }
+	# Parse a string in Kanjidic format
+	#
+	# Returns nil if the string doesn't start with a kanji, otherwise 
+	# Returns a Hash containing the Kanji informations found in the String given in argument. 
+	# Refer to the Kanjidic homepage for details about the accepted structure of the string.
+	def self.parse line, jis
+		return nil if line =~ /^[[:ascii:]]/ #Anything that doesn't start with a (supposedly) kanji is treated as a comment
 		elements = line.scan(/{[^}]+}|\S+/)
-		# The two first elements are fixed 
-		k[:character] = elements.shift
-		k[:'JIS code'] = elements.shift
-		# The rest is code based
-		self.kana = :reading
-		available_codes = codes.keys
+		kanji = { character: elements.shift, jis_code: jis.to_s + elements.shift, dictionaries: {} }
+		kanji.extend self
+		kana = :reading
 		elements.each do |e|
-			available_codes.each do |c|
-				if m = e.match(/^#{c}$/)
-					key = codes[c]
-					value = m[1]
-					if key.is_a? Symbol	
-						insert k, key, value
-					elsif key.is_a? Hash
-						insert k, key.first[0], { key.first[1] => value }
-					elsif key.respond_to? :call
-						ret = key.call(*m[1..-1])
-						insert k, ret.first[0], ret.first[1] if ret.is_a? Hash
-					end
-					break
+			# We'll only consider the first match, because reasons 
+			# (namely a well formed file should never yield more than 1 match array)
+			matches = e.scan(parser)[0]
+			unless matches 
+				_insert kanji, { undefined: e }
+			else
+				matches.compact!
+				case matches.length
+				when 1 # It's a reading, see Kanjidic::parser
+					_insert kanji, { kana => matches[0] }
+				when 2 # It's a meaning, see Kanjidic::parser
+					_insert kanji, { meanings: matches[1] }
+				when 3 # It's a code, see Kanjidic::parser
+					code, subcode, value = *matches
+					_insert kanji, codes[code].call(subcode, value, ->(n) { kana = n })
+				else raise "Unhandled case"
 				end
 			end
 		end
-		return k
+		kanji
 	end
 
+	# Builds a Regexp for line parsing
+	#
+	# Builds a Regexp based on the informations available in the @@dictionaries variables.
+	# Takes a boolean parameter to indicate whether the regexp should be constructed from
+	# scratches as opposed to retrieved from a cached value, false by default (returns the cache).
+	# The resulting regexp will return matches as follow:
+	# 3 groups (code, sub code, value) if the element is code based,
+	# 2 groups ("{", content) if it is a bracket delimited string,
+	# 1 group (content) if it is a string of japanese characters
+	def self.parser reload = false
+		return @@parser if @@parser and !reload
+		# It's gonna get ugly so here's the reasoning: take all the codes and check for them,
+		# then take the remaining informations and refer it for later
+
+		# First fetch the dictionary codes and assemble them in a A|B|DR|... fashion
+		dic_codes = codes.keys.join("|")
+		# Build the actual regexp.
+		# The format is dic_code + optionaly 1 or 2 uppercase letters + kanji_code
+		# OR {text with spaces} OR <japanese characters>
+		@@parser = /(#{dic_codes})([A-Z]{0,2})(.+)|({)(.*)}|(\W+)/
+	end
+
+	# Return a hash of all the informations that will be used when building the dictionary
+	#
+	# The Hash is build from the values returned by Kanjidic::dictionaries and Kanjidic::additional_codes
+	# and cached for further use. The parameter in a boolean indicating whether the value should be 
+	# fetched from the cache or rebuild (default to false: from cache)
+	def self.codes reload = false
+		return @@codes if @@codes and !reload
+		@@codes = dictionaries.to_a.map { |e| 
+			sym, arr = *e 
+			[ arr[0], ->(s, v, _) { { dictionaries: { sym => s + v } } } ]
+		}.to_h.
+		merge(additional_codes.to_a.map { |e| 
+			sym, arr = *e
+			[ arr[0], ->(s, v, _) { { sym => s + v } } ]
+		}.to_h).merge(special_codes)
+	end
+
+	# Return a hash containing all the informations about dictionary codes
+	#
+	# Modifying the return value will change the behaviour of the module. See
+	# implementation for details
+	def self.dictionaries
+		@@dictionaries
+	end
+
+	# Return a hash containing the informations about non dictionary codes
+	#
+	# Modifying the return value will change the behaviour of the module. See
+	# implementation for details
+	def self.additional_codes
+		@@additional_codes
+	end
+
+	# Return a hash of all symbols used in the datastructure, associated with a description string
+	#
+	# The hash is build from the values returned by Kanjidic::dictionaries,
+	# Kanjidic::additional_codes and Kanjidic::uncoded_symbols. Modifying it
+	# will not affect the behaviour of the module. The hash is cached, reload
+	# can be forced by passing true to the function.
+	def self.all_symbols reload = false
+		return @@all_symbols if @@all_symbols and !reload
+		coded_symboles.merge(uncoded_symbols)
+	end
+
+	# Returns a hash of all symbols and their String representations
+	def self.coded_symboles
+		dictionaries.to_a.map { |e| 
+			sym, arr = *e
+			[ sym, arr[1] ]
+		}.to_h.
+		merge(additional_codes.to_a.map { |e|
+			sym, arr = *e
+			[ sym, arr[1] ]
+		}.to_h)
+	end
+
+	# Return a hash of all symboles not associated with a letter code
+	#
+	# The values are the description strings
+	def self.uncoded_symbols
+		@@uncoded
+	end
+
+	# Return a hash of all the special codes and associated Procs
+	def self.special_codes
+		@@special_codes
+	end
+
+
+	#
+	# Forward anything not specificaly defined to the dictionary array if it is
+	# loaded
+	def self.method_missing sym, *args, &blck
+		raise NoMethodError,
+			"No method named #{sym} for Kanjidic (try loading the dictionary with Kanjidic::open first)" unless @@dic
+		@@dic.send sym, *args, &blck
+	end
+
+	def to_s 
+		Kanjidic::format self, character: 0, reading: 1, 'name reading': 2, 'radical name': 3, meanings: 4, dictionaries: false
+	end
+
+	# Turns a Kanjidic entry into an easy to read string
 	def self.format e, opt = {}
 		if e.is_a? Array
 			e.map { |el| format el, opt }.join("\n")
 		elsif e.is_a? Hash
-			opt = { character: 0, reading: 1, 'name reading': 2, 'radical name': 3, meanings: 4, dictionary: false }.merge(opt)
+			opt = { character: 0 }.merge(opt)
 			ret = ""
 			opt.sort_by { |_, value| value ? value : 0 }.to_h.each { |key, visible| ret += _to_s(key, e[key]) if visible and e[key] }
 			e.each { |k,v| ret += _to_s k, v unless opt.has_key?(k) }
@@ -208,26 +320,32 @@ module Kanjidic
 		end
 	end
 
-	def self.descriptions
-		@@descriptions
-	end
-
-	private_class_method def self.insert hash, key, value 
-		t = hash[key]
-		if t.nil? 
-			hash[key] = value 
-		elsif t.is_a?(Array)
-			hash[key] << value
-		elsif t.is_a?(Hash)
-			 value.each { |k,v| insert hash[key], k, v }
-		else 
+	# Insert values in a hash depending on the previous content of the hash
+	# Essentially a deep_merge implementation.. 
+	def self._insert hash, dic
+		dic.each do |key, value|
+			t = hash[key]
+			# If the key doesn't exist, insert
+			if t.nil?
+				hash[key] = value
+				# If the key exist and its value is an array, add to it
+			elsif t.is_a?(Array)
+				hash[key] << value
+				# If the key exist  and its value is a hash, merge them following the rules of this function
+			elsif t.is_a?(Hash)
+				_insert hash[key], value
+				# If the key exists and its value is anything else, build an array to contain the previous value and
+				# the new one
+			else
 			hash[key] = [hash[key], value]
+			end
 		end
 	end
+	private_class_method :_insert
 
 	private_class_method def self._to_s key, value, nesting = 1, resolve = false
-		resolve = (resolve || key.to_s[/misrepresentation|crossreference/])
-		ret = "#{key}:"
+		resolve = (resolve || key.to_s[/misclassification|crossreference/])
+		ret = "#{all_symbols[key] || key}:"
 		if value.is_a? Hash 
 			ret += "\n"
 			value.each { |k, v| ret += " " * 2 * nesting + _to_s(k, v, nesting + 1, resolve) }
@@ -241,12 +359,11 @@ module Kanjidic
 
 	private_class_method def self._resolve key, value, resolve
 		return "" unless open? and resolve
-		key = :SKIP if resolve == "misrepresentation"
+		key = :SKIP if resolve == "misclassification"
 		r = Kanjidic.find { |e| 
-			(e[key] == value) || (e[:dictionary][key] == value)
+			(e[key] == value) || (e[:dictionaries][key] == value)
 		}		  
 		r ? " (#{r[:character]})" : ""
 	end
-
 end
 
