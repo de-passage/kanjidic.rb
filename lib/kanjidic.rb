@@ -70,9 +70,9 @@ module Kanjidic
 	@@codes ||= nil
 	@@all_symbols ||= nil
 
-	@@special_codes ||= { 
-		'T' => ->(_, value, sup) { 
-			case value.to_i 
+	@@special_codes ||= {
+		'T' => ->(_, value, sup) {
+			case value.to_i
 			when 1
 				sup.call(:name_reading)
 			when 2
@@ -82,30 +82,30 @@ module Kanjidic
 		},
 		'M' => ->(subcode, value, _) {
 			{
-				dictionaries: { 
+				dictionaries: {
 					morohasidaikanwajiten: {
-						case subcode 
+						case subcode
 						when 'N'
 							:number
 						when 'P'
 							:page
-						end => value 
+						end => value
 					}
 				}
 			}
 		},
 		'X' => ->(subcode, value, _) {
-			{ crossreference: 
-				if subcode == "J" 
+			{ crossreference:
+				if subcode == "J"
 					{ jis_code: value }
 				elsif t = codes[subcode]
 					t.call("", value, proc {})
-				else 
+				else
 					{ undefined: value }
-				end 
+				end
 			}
 		},
-		'Z' => ->(subcode, value, _) {  
+		'Z' => ->(subcode, value, _) {
 			key = case subcode[0]
 				  when 'S' then :strokes
 				  when 'P' then :position
@@ -113,7 +113,7 @@ module Kanjidic
 				  when 'R' then :disagreement
 				  else :undefined
 				  end
-			{ misclassification: { key => value } } 
+			{ misclassification: { key => value } }
 		},
 		'IN' => ->(_, value, _) {
 			{ dictionaries: { spahn_hadaminsky: value } }
@@ -123,6 +123,7 @@ module Kanjidic
 	# Load the Kanji dictionary
 	#
 	# Load a file at the location given in argument in the KANJIDIC format and parse it into a data structure in memory.
+	#
 	# Raise an exception if a file has already been loaded. See also Kanjidic::close, Kanjidic::expand
 	def self.open filename, jis
 		raise "Kanjidic already open (use Kanjidic::close first if you want to reload it, or Kanjidic::expand if you want to extend it)" if @@dic
@@ -139,6 +140,7 @@ module Kanjidic
 	# Close the Kanji dictionary
 	#
 	# The Kanjidic is a big file, resulting in a big structure in memory.
+	#
 	# Use this function if you need to close it
 	def self.close
 		@@dic = nil
@@ -158,7 +160,7 @@ module Kanjidic
 	def self.build filename, jis
 		File.open(filename) do |f|
 			result = []
-			f.each do |l| 
+			f.each do |l|
 				if r = parse(l, jis)
 					result << r
 				end
@@ -169,8 +171,10 @@ module Kanjidic
 
 	# Parse a string in Kanjidic format
 	#
-	# Returns nil if the string doesn't start with a kanji, otherwise 
-	# Returns a Hash containing the Kanji informations found in the String given in argument. 
+	# Returns nil if the string doesn't start with a kanji, otherwise
+	#
+	# Returns a Hash containing the Kanji informations found in the String given in argument.
+
 	# Refer to the Kanjidic homepage for details about the accepted structure of the string.
 	def self.parse line, jis
 		return nil if line =~ /^[[:ascii:]]/ #Anything that doesn't start with a (supposedly) kanji is treated as a comment
@@ -179,10 +183,10 @@ module Kanjidic
 		kanji.extend self
 		kana = :reading
 		elements.each do |e|
-			# We'll only consider the first match, because reasons 
+			# We'll only consider the first match, because reasons
 			# (namely a well formed file should never yield more than 1 match array)
 			matches = e.scan(parser)[0]
-			unless matches 
+			unless matches
 				_insert kanji, { undefined: e }
 			else
 				matches.compact!
@@ -203,12 +207,18 @@ module Kanjidic
 
 	# Builds a Regexp for line parsing
 	#
+	#
 	# Builds a Regexp based on the informations available in the @@dictionaries variables.
+	#
 	# Takes a boolean parameter to indicate whether the regexp should be constructed from
 	# scratches as opposed to retrieved from a cached value, false by default (returns the cache).
-	# The resulting regexp will return matches as follow:
+	#
+	#The resulting regexp will return matches as follow:
+	#
 	# 3 groups (code, sub code, value) if the element is code based,
+	#
 	# 2 groups ("{", content) if it is a bracket delimited string,
+	#
 	# 1 group (content) if it is a string of japanese characters
 	def self.parser reload = false
 		return @@parser if @@parser and !reload
@@ -226,15 +236,17 @@ module Kanjidic
 	# Return a hash of all the informations that will be used when building the dictionary
 	#
 	# The Hash is build from the values returned by Kanjidic::dictionaries and Kanjidic::additional_codes
-	# and cached for further use. The parameter in a boolean indicating whether the value should be 
+	# and cached for further use.
+	#
+	# The parameter in a boolean indicating whether the value should be
 	# fetched from the cache or rebuild (default to false: from cache)
 	def self.codes reload = false
 		return @@codes if @@codes and !reload
-		@@codes = dictionaries.to_a.map { |e| 
-			sym, arr = *e 
+		@@codes = dictionaries.to_a.map { |e|
+			sym, arr = *e
 			[ arr[0], ->(s, v, _) { { dictionaries: { sym => s + v } } } ]
 		}.to_h.
-		merge(additional_codes.to_a.map { |e| 
+		merge(additional_codes.to_a.map { |e|
 			sym, arr = *e
 			[ arr[0], ->(s, v, _) { { sym => s + v } } ]
 		}.to_h).merge(special_codes)
@@ -260,7 +272,9 @@ module Kanjidic
 	#
 	# The hash is build from the values returned by Kanjidic::dictionaries,
 	# Kanjidic::additional_codes and Kanjidic::uncoded_symbols. Modifying it
-	# will not affect the behaviour of the module. The hash is cached, reload
+	# will not affect the behaviour of the module.
+	#
+	# The hash is cached, reload
 	# can be forced by passing true to the function.
 	def self.all_symbols reload = false
 		return @@all_symbols if @@all_symbols and !reload
@@ -269,7 +283,7 @@ module Kanjidic
 
 	# Returns a hash of all symbols and their String representations
 	def self.coded_symboles
-		dictionaries.to_a.map { |e| 
+		dictionaries.to_a.map { |e|
 			sym, arr = *e
 			[ sym, arr[1] ]
 		}.to_h.
@@ -292,17 +306,23 @@ module Kanjidic
 	end
 
 
-	#
 	# Forward anything not specificaly defined to the dictionary array if it is
 	# loaded
 	def self.method_missing sym, *args, &blck
 		raise NoMethodError,
-			"No method named #{sym} for Kanjidic (try loading the dictionary with Kanjidic::open first)" unless @@dic
+			"No method named #{sym} for Kanjidic#{
+		" (try loading the dictionary with Kanjidic::open first)" if [].respond_to?(sym)}" unless @@dic
 		@@dic.send sym, *args, &blck
 	end
 
-	def to_s 
-		Kanjidic::format self, character: 0, reading: 1, 'name reading': 2, 'radical name': 3, meanings: 4, dictionaries: false
+	def to_s
+		Kanjidic::format self,
+			character: 0,
+			reading: 1,
+			name_reading: 2,
+			radical_name: 3,
+			meanings: 4,
+			dictionaries: false
 	end
 
 	# Turns a Kanjidic entry into an easy to read string
@@ -315,13 +335,14 @@ module Kanjidic
 			opt.sort_by { |_, value| value ? value : 0 }.to_h.each { |key, visible| ret += _to_s(key, e[key]) if visible and e[key] }
 			e.each { |k,v| ret += _to_s k, v unless opt.has_key?(k) }
 			ret
-		else 
+		else
 			raise ArgumentError, "Invalid parameter #{e}"
 		end
 	end
 
 	# Insert values in a hash depending on the previous content of the hash
-	# Essentially a deep_merge implementation.. 
+	#
+	# Essentially a deep_merge implementation..
 	private_class_method def self._insert hash, dic
 		dic.each do |key, value|
 			t = hash[key]
@@ -343,14 +364,14 @@ module Kanjidic
 	end
 
 	private_class_method def self._to_s key, value, nesting = 1, resolve = false
-		resolve = (resolve || key.to_s[/misclassification|crossreference/])
+		resolve = (resolve || key == :crossreference)
 		ret = "#{all_symbols[key] || key}:"
-		if value.is_a? Hash 
+		if value.is_a? Hash
 			ret += "\n"
 			value.each { |k, v| ret += " " * 2 * nesting + _to_s(k, v, nesting + 1, resolve) }
 		elsif value.is_a? Array
 			ret += " " + value.map{ |e| e.to_s + _resolve(key, e, resolve) }.join(", ") +  "\n"
-		else 
+		else
 			ret += " #{value}#{_resolve(key, value, resolve)}\n"
 		end
 		ret
@@ -358,10 +379,9 @@ module Kanjidic
 
 	private_class_method def self._resolve key, value, resolve
 		return "" unless open? and resolve
-		key = :SKIP if resolve == "misclassification"
-		r = Kanjidic.find { |e| 
+		r = Kanjidic.find { |e|
 			(e[key] == value) || (e[:dictionaries][key] == value)
-		}		  
+		}
 		r ? " (#{r[:character]})" : ""
 	end
 end
