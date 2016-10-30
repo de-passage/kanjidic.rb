@@ -194,7 +194,8 @@ module Kanjidic
 				when 1 # It's a reading, see Kanjidic::parser
 					_insert kanji, { kana => matches[0] }
 				when 2 # It's a meaning, see Kanjidic::parser
-					_insert kanji, { meanings: matches[1] }
+					m = matches[1]
+					(m == "(kokuji)") ? kanji[:kokuji] = true : _insert(kanji, { meanings: m })
 				when 3 # It's a code, see Kanjidic::parser
 					code, subcode, value = *matches
 					_insert kanji, codes[code].call(subcode, value, ->(n) { kana = n })
@@ -310,8 +311,7 @@ module Kanjidic
 	# loaded
 	def self.method_missing sym, *args, &blck
 		raise NoMethodError,
-			"No method named #{sym} for Kanjidic#{
-		" (try loading the dictionary with Kanjidic::open first)" if [].respond_to?(sym)}" unless @@dic
+			"No method named #{sym} for Kanjidic#{" (try loading the dictionary with Kanjidic::open first)" if [].respond_to?(sym)}" unless @@dic
 		@@dic.send sym, *args, &blck
 	end
 
