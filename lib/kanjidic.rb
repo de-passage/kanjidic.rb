@@ -214,7 +214,7 @@ module Kanjidic
 	# Takes a boolean parameter to indicate whether the regexp should be constructed from
 	# scratches as opposed to retrieved from a cached value, false by default (returns the cache).
 	#
-	#The resulting regexp will return matches as follow:
+	# The resulting regexp will return matches as follow:
 	#
 	# 3 groups (code, sub code, value) if the element is code based,
 	#
@@ -282,6 +282,11 @@ module Kanjidic
 		coded_symboles.merge(uncoded_symbols)
 	end
 
+	# Alias for Kanjidic::all_symbols
+	def self.symbols
+		all_symbols
+	end
+
 	# Returns a hash of all symbols and their String representations
 	def self.coded_symboles
 		dictionaries.to_a.map { |e|
@@ -294,7 +299,7 @@ module Kanjidic
 		}.to_h)
 	end
 
-	# Return a hash of all symboles not associated with a letter code
+	# Return a hash of all symboles not associated with a letter code.
 	#
 	# The values are the description strings
 	def self.uncoded_symbols
@@ -337,6 +342,22 @@ module Kanjidic
 			ret
 		else
 			raise ArgumentError, "Invalid parameter #{e}"
+		end
+	end
+
+
+	# Basic search tool matching any entry in the dictionary that matches the conditions 
+	# given in parameter
+	#
+	# Example: 
+	#   search pronunciation: "あ", jlpt: '1'
+	def self.search h = {}
+		raise "Load the dictionary before searching" unless @@dic
+		@@dic.select do |kanji| 
+			h.inject(true) do |acc, a|
+				key, value = a
+				acc && _include?(value, kanji[key])
+			end
 		end
 	end
 
@@ -383,6 +404,25 @@ module Kanjidic
 			(e[key] == value) || (e[:dictionaries][key] == value)
 		}
 		r ? " (#{r[:character]})" : ""
+	end
+
+	private_class_method def self._include? value, target
+		case target
+		when Hash
+			value.is_a?(Hash) ? 
+				(value.to_a.inject(true) { |acc, a|
+				k, v = a
+				acc && (target[k] == v)
+			}) : false
+		when Array
+			value.is_a?(Array) ? 
+				(value.inject(true) { |acc, e| 
+				acc && target.include?(e)
+			}) : target.include?(value)
+
+		else
+			value == target
+		end
 	end
 end
 

@@ -5,13 +5,20 @@ require "optparse"
 require "irb"
 
 file_name = ARGV[0]
+unless file_name
+	$stderr.puts "Usage:\n\tkanjidic FILE [options]\n\tkanjidic FILE [options] -e {expression}"
+	exit
+end
+unless File.exist? file_name
+	$stderr.puts "No such file: #{file_name}"
+	exit
+end
 defaults = { file: file_name, jis: 0, ext_jis: [1, 2] }
-raise "No such file #{file_name}" unless File.exist? file_name
 options = {}
 
 OptionParser.new do |opts|
 
-	opts.banner = "Usage: \tkanjidic FILE [options]\n\t\t\tkanjidic FILE [options] -e {expression}"
+	opts.banner = "Usage:\n\tkanjidic FILE [options]\n\tkanjidic FILE [options] -e {expression}"
 
 	opts.on("-e EXPRESSION", "--expression EXPRESSION", "Run a Ruby expression inside the context of the dictionary") do |e|
 		options[:expression] = e
