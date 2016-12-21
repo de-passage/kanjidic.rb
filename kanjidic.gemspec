@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
 	s.name        = 'kanjidic'
-	s.version     = '0.4.0'
+	s.version     = '0.4.1'
 	s.date        = '2016-10-26'
 	s.summary     = "Extract and explore the KANJIDIC"
 	s.description = "A gem to extract and explore the KANJIDIC (http://ftp.monash.edu.au/pub/nihongo/kanjidic.html)"
