@@ -1,0 +1,83 @@
+#!/usr/bin/env ruby
+
+require "kanjidic"
+require "optparse"
+require "irb"
+
+file_name = ARGV[0]
+defaults = { file: file_name, jis: 0, ext_jis: [1, 2] }
+raise "No such file #{file_name}" unless File.exist? file_name
+options = {}
+
+OptionParser.new do |opts|
+
+	opts.banner = "Usage: \tkanjidic FILE [options]\n\t\t\tkanjidic FILE [options] -e {expression}"
+
+	opts.on("-e EXPRESSION", "--expression EXPRESSION", "Run a Ruby expression inside the context of the dictionary") do |e|
+		options[:expression] = e
+	end
+
+	opts.on("-J PREFIX", "--JIS-prefix=PREFIX", "Run the dictionary with a custom prefix (only works with custom dictionary file)") do |p|
+		options[:jis] = p unless options[:file].nil?
+	end
+
+	opts.on("-x FILES", "--extensions=FILES", "Parse and add FILES to the dictionary") do |f|
+		options[:extensions] = f.split(";")
+	end
+
+	opts.on("--extensions-JIS=PREFIX", "Sets the prefixes for additional files.") do |p|
+		options[:ext_jis] = p.is_a?(Number) ? [p] : p
+	end
+
+	opts.on_head("-h", "--help", "Print this message") do 
+		puts opts
+		exit
+	end
+
+end.parse!
+
+options = defaults.merge options
+
+Kanjidic.open(options[:file], options[:jis])
+if options[:extensions] 
+	[options[:extensions], options[:ext_jis]].transpose.each do |ext, code|
+		Kanjidic.expand ext, code
+	end
+end
+
+if(e = options[:expression])
+	puts eval(e, Kanjidic.binding)
+else
+	module Kanjidic
+		@@dic.freeze
+		
+		def self.about arg = nil
+			unless arg.nil?
+				puts case arg
+				when Hash 
+					arg.to_a.map { |k,v| 
+						"#{k}".ljust(25) + "#{v}"
+					}.join("\n")
+				when Array
+					arg.join(", ")
+				else
+					arg
+				end
+			else
+				puts <<~HELP
+				All commands are evaluated inside the Kanjidic module (see library documentation for more information). 
+				Unknown commands are redirected to the @@dic Array which contains the dictionary. 
+				For example, to search for all kanji which can be pronunced "あ", type the command 'find_all { |k| k[:reading].include? "あ" }'
+
+				Type 'about symbols' to print a list of the symbols composing kanji Hashes
+				HELP
+			end
+		end
+	end
+	IRB.setup nil 
+	IRB.conf[:MAIN_CONTEXT] = IRB::Irb.new.context
+	require 'irb/ext/multi-irb'
+	puts "Type 'about' for informations about this software."
+	puts "Type 'exit' to terminate the session."
+	IRB.irb nil, Kanjidic
+end
